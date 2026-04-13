@@ -55,7 +55,7 @@ class Command(BaseCommand):
                         continue
 
                     date = release.get("date")
-                    date_format = release.get("date_format", {}).get("id")
+                    date_format = release.get("date_format", {}).get("format")
                     if date is None and date_format is None:
                         continue
 
@@ -63,7 +63,7 @@ class Command(BaseCommand):
                     if region is not None and region not in (8, 1):
                         continue
 
-                    releases_by_platform[release["platform"]["id"]][region] = [date, date_format]
+                    releases_by_platform[release["platform"]["id"]][region] = [date, date_format, release["id"]]
 
                 if not releases_by_platform:
                     skipped_games.append([game_data["id"], game_data["name"]])
@@ -81,17 +81,19 @@ class Command(BaseCommand):
                     igdb_id=game_data["id"],
                     title=game_data["name"],
                     slug=game_data["slug"],
+                    hypes=game_data.get("hypes"),
                     cover_image_id=game_data["cover"]["image_id"] if "cover" in game_data else None,
                 )
 
                 GamePlatformRelease.objects.bulk_create(
                     GamePlatformRelease(
+                        igdb_id=igdb_id,
                         game=game,
                         platform_id=platform_mapping[platform],
                         date=datetime.fromtimestamp(date, timezone.utc).date() if date is not None else None,
                         date_format=date_format,
                     )
-                    for platform, (date, date_format) in releases_by_platform.items()
+                    for platform, (date, date_format, igdb_id) in releases_by_platform.items()
                 )
                 games_written += 1
 

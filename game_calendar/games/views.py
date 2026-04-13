@@ -35,6 +35,6 @@ class GameViewset(mixins.RetrieveModelMixin,
 
 
 @csrf_exempt
-def webhook(request):
+def igdb_webhook(request):
     WebhookEvent.objects.create(payload=json.loads(request.body))
     return HttpResponse(status=200)

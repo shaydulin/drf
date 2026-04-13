@@ -14,6 +14,7 @@ class IGDBIdMixin(models.Model):
 class Game(IGDBIdMixin):
     title = models.CharField(max_length=250)
     slug = models.SlugField(max_length=250, unique=True)
+    hypes = models.IntegerField(default=0)
     cover_image_id = models.CharField(max_length=250, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -40,7 +41,7 @@ class Platform(IGDBIdMixin):
         return self.title
 
 
-class GamePlatformRelease(models.Model):
+class GamePlatformRelease(IGDBIdMixin):
     class Format(models.TextChoices):
         YYYYMMDD = "YYYYMMDD", "Exact date"
         YYYYMM = "YYYYMM", "Year and month"
@@ -68,6 +69,7 @@ class GamePlatformRelease(models.Model):
         related_name="releases"
     )
     date = models.DateField(blank=True, null=True)
+    # TODO: add date_human field for better readability and sorting
     date_format = models.CharField(max_length=10,
                                    choices=Format.choices,
                                    null=True,
