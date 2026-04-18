@@ -85,16 +85,23 @@ class Command(BaseCommand):
                     cover_image_id=game_data["cover"]["image_id"] if "cover" in game_data else None,
                 )
 
-                GamePlatformRelease.objects.bulk_create(
-                    GamePlatformRelease(
+                game_platform_releases = []
+                for platform, (date, date_format, igdb_id) in releases_by_platform.items():
+                    date_obj = datetime.fromtimestamp(date, timezone.utc).date() if date is not None else None
+                    year = date_obj.year if date_obj else None
+                    month = date_obj.month if date_obj else None
+                    day = date_obj.day if date_obj else None
+                    game_platform_releases.append(GamePlatformRelease(
                         igdb_id=igdb_id,
                         game=game,
                         platform_id=platform_mapping[platform],
-                        date=datetime.fromtimestamp(date, timezone.utc).date() if date is not None else None,
+                        date=date_obj,
+                        year=year,
+                        month=month,
+                        day=day,
                         date_format=date_format,
-                    )
-                    for platform, (date, date_format, igdb_id) in releases_by_platform.items()
-                )
+                    ))
+                GamePlatformRelease.objects.bulk_create(game_platform_releases)
                 games_written += 1
 
             if interrupt:

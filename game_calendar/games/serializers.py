@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Game
+from .models import Game, GamePlatformRelease
 
 
 class GameSerializer(serializers.HyperlinkedModelSerializer):
@@ -20,3 +20,20 @@ class GameSerializer(serializers.HyperlinkedModelSerializer):
 
     def get_cover_big(self, obj):
         return obj.get_cover_url("cover_big")
+
+
+    # queryset = GamePlatformRelease.objects.values(
+    #     "game_id",
+    #     "date",
+    #     "date_format",
+    # ).annotate(
+    #     platforms=ArrayAgg("platform__title"),
+    # ).order_by("date")
+class ReleaseCalendarSerializer(serializers.Serializer):
+    game_id = serializers.IntegerField()
+    date = serializers.DateField()
+    date_format = serializers.CharField()
+    platforms = serializers.ListField(child=serializers.CharField())
+    # class Meta:
+    #     model = GamePlatformRelease
+    #     fields = "__all__"

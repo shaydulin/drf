@@ -69,7 +69,9 @@ class GamePlatformRelease(IGDBIdMixin):
         related_name="releases"
     )
     date = models.DateField(blank=True, null=True)
-    # TODO: add date_human field for better readability and sorting
+    year = models.PositiveSmallIntegerField(null=True, blank=True)
+    month = models.PositiveSmallIntegerField(null=True, blank=True)
+    day = models.PositiveSmallIntegerField(null=True, blank=True)
     date_format = models.CharField(max_length=10,
                                    choices=Format.choices,
                                    null=True,
