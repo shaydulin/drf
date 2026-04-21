@@ -19,7 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("", include("games.urls", namespace="games")),
-    path("", include("djoser.urls")),
-    path("", include("djoser.urls.authtoken")),
+    path("api/v1/g/", include("games.urls", namespace="games")),
+    path("api/v1/u/", include("users.urls", namespace="users")),
 ]

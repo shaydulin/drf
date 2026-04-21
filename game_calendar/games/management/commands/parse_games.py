@@ -81,6 +81,7 @@ class Command(BaseCommand):
                     igdb_id=game_data["id"],
                     title=game_data["name"],
                     slug=game_data["slug"],
+                    summary=game_data.get("summary"),
                     hypes=game_data.get("hypes"),
                     cover_image_id=game_data["cover"]["image_id"] if "cover" in game_data else None,
                 )
@@ -88,9 +89,9 @@ class Command(BaseCommand):
                 game_platform_releases = []
                 for platform, (date, date_format, igdb_id) in releases_by_platform.items():
                     date_obj = datetime.fromtimestamp(date, timezone.utc).date() if date is not None else None
-                    year = date_obj.year if date_obj else None
-                    month = date_obj.month if date_obj else None
-                    day = date_obj.day if date_obj else None
+                    year = date_obj.year if date_obj and "YYYY" in date_format else None
+                    month = date_obj.month if date_obj and "MM" in date_format else None
+                    day = date_obj.day if date_obj and "DD" in date_format else None
                     game_platform_releases.append(GamePlatformRelease(
                         igdb_id=igdb_id,
                         game=game,

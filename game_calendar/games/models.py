@@ -2,6 +2,8 @@ from django.db import models
 from django.urls import reverse
 from django.utils.text import slugify
 from django.core.exceptions import ImproperlyConfigured
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.indexes import GinIndex
 
 
 class IGDBIdMixin(models.Model):
@@ -14,8 +16,10 @@ class IGDBIdMixin(models.Model):
 class Game(IGDBIdMixin):
     title = models.CharField(max_length=250)
     slug = models.SlugField(max_length=250, unique=True)
+    summary = models.TextField(null=True, blank=True)
     hypes = models.IntegerField(default=0)
     cover_image_id = models.CharField(max_length=250, null=True, blank=True)
+    search_vector = SearchVectorField(null=True, editable=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     platforms = models.ManyToManyField(
@@ -25,10 +29,15 @@ class Game(IGDBIdMixin):
         blank=True
     )
 
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector']),
+        ]
+
     def __str__(self):
         return self.title
 
-    def get_cover_url(self, size):
+    def get_cover_url(self, size="cover_small"):
         return f"https://images.igdb.com/igdb/image/upload/t_{size}/{self.cover_image_id}.png"
 
 

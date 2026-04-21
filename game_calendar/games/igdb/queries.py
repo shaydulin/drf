@@ -34,7 +34,8 @@ def fetch_games(platform_ids: list, offset: int = 0, cnt: bool = False):
             release_dates.platform.name,
             release_dates.release_region.region,
             release_dates.status.name,
-            slug;
+            slug,
+            summary;
         where
             game_type = (0, 8, 9)
             & hypes > 0
