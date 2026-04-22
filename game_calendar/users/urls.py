@@ -11,12 +11,12 @@ from . import views
 app_name = "users"
 
 router = routers.SimpleRouter()
-router.register("", views.GameCalendarUserViewSet, basename="user")
+router.register("u", views.GameCalendarUserViewSet, basename="user")
 
 urlpatterns = [
     path("", include(router.urls)),
     # path("", include("djoser.urls")),
-    path("auth/", include("djoser.urls.authtoken")),
-    path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # path("u/auth/", include("djoser.urls.authtoken")),
+    path('u/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('u/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

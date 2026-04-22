@@ -39,6 +39,9 @@ class Game(IGDBIdMixin):
 
     def get_cover_url(self, size="cover_small"):
         return f"https://images.igdb.com/igdb/image/upload/t_{size}/{self.cover_image_id}.png"
+    
+    def get_absolute_url(self):
+        return reverse("games:game-detail", kwargs={"slug": self.slug})
 
 
 class Platform(IGDBIdMixin):
@@ -87,6 +90,25 @@ class GamePlatformRelease(IGDBIdMixin):
                                    blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def get_formatted_date(self):
+        if not self.date:
+            return None
+        
+        if self.date_format == self.Format.YYYYMMDD:
+            return self.date.strftime("%Y-%m-%d")
+        elif self.date_format == self.Format.YYYYMM:
+            return self.date.strftime("%Y-%m")
+        elif self.date_format == self.Format.YYYY:
+            return self.date.strftime("%Y")
+        elif self.date_format in [self.Format.YYYYQ1, self.Format.YYYYQ2, 
+                                   self.Format.YYYYQ3, self.Format.YYYYQ4]:
+            quarter = self.date_format[-1]
+            return f"{self.date.year}-Q{quarter}"
+        elif self.date_format == self.Format.TBD:
+            return "TBD"
+        
+        return None
 
     def __str__(self):
         return f"{self.game.title} on {self.platform.title} @ {self.date}"
