@@ -22,3 +22,5 @@ urlpatterns = [
     path("api/v1/", include("games.urls", namespace="games")),
     path("api/v1/", include("users.urls", namespace="users")),
 ]
+
+# TODO: need 404 handler for api?

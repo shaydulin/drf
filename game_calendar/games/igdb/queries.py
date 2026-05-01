@@ -1,6 +1,17 @@
 from .base import fetch
 
 
+def fetch_release_date_formats():
+    endpoint = "date_formats/"
+    query = """
+        fields id, format;
+        limit 500;
+    """
+    result = fetch(endpoint, query)
+
+    return result
+
+
 def fetch_platforms(platform_ids: list):
     endpoint = "platforms/"
     query = f"""
@@ -38,7 +49,7 @@ def fetch_games(platform_ids: list, offset: int = 0, cnt: bool = False):
             summary;
         where
             game_type = (0, 8, 9)
-            & hypes > 0
+            & hypes > 10
             & (release_dates.release_region = (8, 1) | release_dates.release_region = null)
             & (release_dates.date != null | release_dates.date_format.format != null)
             & (release_dates.status = 6 | release_dates.status = null)

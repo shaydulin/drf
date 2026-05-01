@@ -7,8 +7,9 @@ from . import views
 app_name = "games"
 
 router = routers.SimpleRouter()
-router.register("g", views.GameViewset, basename="game")
-# router.register("release-calendar", views.GamePlatformReleaseViewset)
+router.register("games", views.GameViewset, basename="game")
+router.register("games-calendar", views.CalendarViewset, basename="calendar")
+# router.register("user-games", views.UserGameViewset, basename="user-games")
 
 urlpatterns = [
     path("", include(router.urls)),

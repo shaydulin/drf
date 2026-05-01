@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Game, GamePlatformRelease
+from .models import Game, GamePlatformRelease, UserGame
 
 
 class ReleaseListingField(serializers.RelatedField):
@@ -39,5 +39,21 @@ class GameListSerializer(serializers.ModelSerializer):
 
 class CalendarEntrySerializer(serializers.Serializer):
     game = GameListSerializer()
-    date = serializers.DateField()
+    date = serializers.DateField() # fix this to be a string with formatted date
     platforms = serializers.ListField(child=serializers.CharField())
+
+
+class UserGameSerializer(serializers.ModelSerializer):
+    game = GameListSerializer(read_only=True)
+    game_slug = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = UserGame
+        fields = ['game', 'game_slug', 'status', 'added_at']
+        read_only_fields = ['added_at']
+
+    def create(self, validated_data):
+        game_slug = validated_data.pop('game_slug')
+        game = Game.objects.get(slug=game_slug)
+        validated_data['game'] = game
+        return super().create(validated_data)
