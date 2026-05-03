@@ -14,6 +14,15 @@ class IGDBIdMixin(models.Model):
         abstract = True
 
 
+class GameQuerySet(models.QuerySet):
+    def with_user_status(self, user):
+        if not user.is_authenticated:
+            return self
+        user_games = user.game_links.filter(game=models.OuterRef("pk"))
+        self = self.annotate(status=models.Subquery(user_games.values("status")[:1]))
+        return self
+
+
 class Game(IGDBIdMixin):
     title = models.CharField(max_length=250)
     slug = models.SlugField(max_length=250, unique=True)
@@ -35,6 +44,8 @@ class Game(IGDBIdMixin):
         related_name="games",
         blank=True
     )
+
+    objects = GameQuerySet.as_manager()
 
     class Meta:
         indexes = [
@@ -70,6 +81,7 @@ class ReleaseDateFormat(IGDBIdMixin):
 class GamePlatformRelease(IGDBIdMixin):
     class Meta:
         verbose_name = "Game release"
+        ordering = ["date"]
         constraints = [
             models.UniqueConstraint(fields=['game', 'platform'], name='unique_game_platform')
         ]
@@ -95,23 +107,28 @@ class GamePlatformRelease(IGDBIdMixin):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
-    def get_formatted_date(self):
-        if not self.date:
-            return None
-
-        if self.date_format.title == "YYYYMMDD":
-            return self.date.strftime("%Y-%m-%d")
-        elif self.date_format.title == "YYYYMM":
-            return self.date.strftime("%Y-%m")
-        elif self.date_format.title == "YYYY":
-            return self.date.strftime("%Y")
-        elif self.date_format.title in ["YYYYQ1", "YYYYQ2", "YYYYQ3", "YYYYQ4"]:
-            quarter = self.date_format.title[-1]
-            return f"{self.date.year}-Q{quarter}"
-        elif self.date_format.title == "TBD":
+    def get_formatted_release_date(self):
+        return self.get_formatted_date(
+            self.date_format.title if self.date_format else None,
+            self.date
+        )
+        
+    @staticmethod
+    def get_formatted_date(format_title, date):
+        if not date or not format_title:
             return "TBD"
 
-        return None
+        if format_title == "YYYYMMDD":
+            return date.strftime("%Y-%m-%d")
+        elif format_title == "YYYYMM":
+            return date.strftime("%Y-%m")
+        elif format_title == "YYYY":
+            return date.strftime("%Y")
+        elif format_title in ["YYYYQ1", "YYYYQ2", "YYYYQ3", "YYYYQ4"]:
+            quarter = format_title[-1]
+            return f"{date.year}-Q{quarter}"
+        else:
+            return "TBD"
 
     def __str__(self):
         return f"{self.game.title} on {self.platform.title} @ {self.date}"

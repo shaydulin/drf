@@ -1,31 +1,20 @@
 from datetime import datetime
 import json
-from django.conf import settings
-from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.forms import model_to_dict
-from django.db.models import Prefetch
-from django.db.models.functions import TruncWeek
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.auth import get_user_model
-from rest_framework import filters
-from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView, ListCreateAPIView, DestroyAPIView
+from django.db.models import OuterRef, Subquery
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
-from rest_framework.filters import OrderingFilter
-from rest_framework import status
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
-from django_filters.rest_framework import DjangoFilterBackend
 
-from .utils import retrieve_platform_mapping
 from .models import Game, GamePlatformRelease, UserGame, WebhookEvent
 from .serializers import GameDetailSerializer, CalendarEntrySerializer, GameListSerializer, UserGameSerializer
 from .pagination import StandardResultsSetPagination
-from .filters import GameFilterBackend
+from .filters import GameFilterBackend, UserGameFilterBackend
 
 
 User = get_user_model()
@@ -33,12 +22,18 @@ User = get_user_model()
 class GameViewset(mixins.RetrieveModelMixin,
                   mixins.ListModelMixin,
                   viewsets.GenericViewSet):
-    queryset = Game.objects.all()
     lookup_field = "slug"
     pagination_class = StandardResultsSetPagination
     filter_backends = [GameFilterBackend]
 
-    # TODO: annotate games with user-specific data (e.g. is_in_wishlist) if user is authenticated
+    def get_queryset(self):
+        queryset = Game.objects.all().with_user_status(self.request.user)
+
+        if self.action == "retrieve":
+            queryset = queryset.prefetch_related("releases__platform")
+            return queryset
+
+        return queryset
 
     def filter_queryset(self, queryset):
         if self.action != "list":
@@ -65,20 +60,12 @@ class GameViewset(mixins.RetrieveModelMixin,
             old_status = user_game.status
             user_game.delete()
         if new_status == old_status:
-            return Response({"detail": "Removed from your games"})
+            return Response({"detail": f"Removed from your {old_status} games"})
         else:
             UserGame.objects.get_or_create(user=user,
                                            game=game,
                                            status=new_status)
-            return Response({"detail": "Added to your games"})
-
-    # @action(detail=False,
-    #         methods=["get"],
-    #         url_path=r"user/(?P<username>[\w.@+-]+)")
-    # def get_user_games(self, request, username):
-    #     user = get_object_or_404(User, username=username)
-    #     user_games = user.games.all()
-    #     return Response(GameListSerializer(user_games, many=True).data)
+            return Response({"detail": f"Added to your {new_status} games"})
 
 
 class CalendarViewset(viewsets.GenericViewSet):
@@ -90,11 +77,8 @@ class CalendarViewset(viewsets.GenericViewSet):
         all_releases = GamePlatformRelease.objects.filter(
             date__year=year,
             date__month=month,
-            date_format__in=[
-                GamePlatformRelease.Format.YYYYMMDD,
-                GamePlatformRelease.Format.YYYYMM
-            ]
-        ).values("game_id", "date", "date_format").annotate(
+            date_format__title__in=["YYYYMMDD", "YYYYMM"]
+        ).values("game_id", "date", "date_format__title").annotate(
             platforms=ArrayAgg("platform__title")
         ).order_by("date")
 
@@ -107,12 +91,12 @@ class CalendarViewset(viewsets.GenericViewSet):
         }
         
         for release in all_releases:
-            key = "exact_date" if release["date_format"] == GamePlatformRelease.Format.YYYYMMDD else "this_month"
+            key = "exact_date" if release["date_format__title"] == "YYYYMMDD" else "this_month"
             releases[key].append({
                 "game": games[release["game_id"]],
                 "platforms": release["platforms"],
                 "date": release["date"],
-                "date_format": release["date_format"],
+                "date_format": release["date_format__title"],
             })
         
         releases["exact_date"] = CalendarEntrySerializer(releases["exact_date"], many=True).data
@@ -125,16 +109,13 @@ class CalendarViewset(viewsets.GenericViewSet):
         year = datetime.now().year
 
         releases = GamePlatformRelease.objects.exclude(
-            date_format__in=[
-                GamePlatformRelease.Format.YYYYMMDD,
-                GamePlatformRelease.Format.YYYYMM,
-            ]
+            date_format__title__in=["YYYYMMDD", "YYYYMM"]
         ).filter(
             date__year=year,
         ).values(
             "game_id",
             "date",
-            "date_format",
+            "date_format__title",
         ).annotate(
             platforms=ArrayAgg("platform__title"),
         ).order_by("date")
@@ -147,39 +128,32 @@ class CalendarViewset(viewsets.GenericViewSet):
                 "game": (games[release["game_id"]]),
                 "platforms": release["platforms"],
                 "date": release["date"],
-                "date_format": release["date_format"],
+                "date_format": release["date_format__title"],
             }
             for release in releases),
             many=True,
         ).data)
 
 
-# class UserGameViewset(mixins.ListModelMixin,
-#                       mixins.CreateModelMixin,
-#                       mixins.DestroyModelMixin,
-#                       viewsets.GenericViewSet):
-#     serializer_class = UserGameSerializer
-#     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
-#     filter_backends = [OrderingFilter, DjangoFilterBackend]
-#     filterset_class = UserGameFilterSet
-#     ordering_fields = ['added_at', 'game__title']
+class UserGameViewset(mixins.ListModelMixin,
+                       viewsets.GenericViewSet):
+    serializer_class = UserGameSerializer
+    filter_backends = [UserGameFilterBackend]
 
-#     def get_queryset(self):
-#         from pprint import pprint
-#         pprint(self.__class__.__mro__)
-#         return UserGame.objects.select_related('game')
+    def get_queryset(self):
+        queryset = UserGame.objects.select_related("game")
 
-#     def perform_create(self, serializer):
-#         serializer.save(user=self.request.user)
+        if self.request.user.is_authenticated:
+            queryset = queryset.annotate(
+                requesting_user_status=Subquery(
+                    UserGame.objects.filter(
+                        user=self.request.user,
+                        game=OuterRef("game")
+                    ).values("status")[:1]
+                )
+            )
 
-#     def get_permissions(self):
-#         return super().get_permissions()
-    
-#     def check_permissions(self, request):
-#         return super().check_permissions(request)
-
-#     def get_queryset(self):
-#         pass
+        return queryset
 
 
 @csrf_exempt

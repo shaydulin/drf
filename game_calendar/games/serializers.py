@@ -6,7 +6,7 @@ class ReleaseListingField(serializers.RelatedField):
     def to_representation(self, value: GamePlatformRelease):
         return {
             "platform": value.platform.title,
-            "date": value.get_formatted_date(),
+            "date": value.get_formatted_release_date(),
         }
 
 
@@ -18,17 +18,18 @@ class GameDetailSerializer(serializers.ModelSerializer):
         model = Game
         fields = ("title", "summary", "cover_big", "releases")
 
-    def get_cover_big(self, obj):
+    def get_cover_big(self, obj: Game):
         return obj.get_cover_url("cover_big")
 
 
 class GameListSerializer(serializers.ModelSerializer):
     cover_small = serializers.SerializerMethodField()
     url = serializers.SerializerMethodField()
+    status = serializers.CharField(read_only=True, default=None)
 
     class Meta:
         model = Game
-        fields = ("title", "url", "cover_small")
+        fields = ("title", "url", "cover_small", "status")
 
     def get_cover_small(self, obj):
         return obj.get_cover_url("cover_small")
@@ -39,21 +40,21 @@ class GameListSerializer(serializers.ModelSerializer):
 
 class CalendarEntrySerializer(serializers.Serializer):
     game = GameListSerializer()
-    date = serializers.DateField() # fix this to be a string with formatted date
+    date = serializers.SerializerMethodField()
     platforms = serializers.ListField(child=serializers.CharField())
+
+    def get_date(self, obj):
+        return GamePlatformRelease.get_formatted_date(obj["date_format"], obj["date"])
 
 
 class UserGameSerializer(serializers.ModelSerializer):
-    game = GameListSerializer(read_only=True)
-    game_slug = serializers.CharField(write_only=True)
+    game = GameListSerializer()
+    requested_user_game_status = serializers.CharField(source="status", read_only=True)
 
     class Meta:
         model = UserGame
-        fields = ['game', 'game_slug', 'status', 'added_at']
-        read_only_fields = ['added_at']
+        fields = ("game", "requested_user_game_status")
 
-    def create(self, validated_data):
-        game_slug = validated_data.pop('game_slug')
-        game = Game.objects.get(slug=game_slug)
-        validated_data['game'] = game
-        return super().create(validated_data)
+    def to_representation(self, instance):
+        instance.game.status = getattr(instance, "requesting_user_status", None)
+        return super().to_representation(instance)
