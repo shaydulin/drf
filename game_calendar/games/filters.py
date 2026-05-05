@@ -11,8 +11,6 @@ class GameFilterBackend(filters.BaseFilterBackend):
             raise ValidationError("Search query parameter is required")
 
         query = SearchQuery(search_query)
-        print(search_query)
-        print(query)
         queryset = queryset.filter(
             search_vector=query
         ).annotate(
@@ -31,7 +29,7 @@ class UserGameFilterBackend(filters.BaseFilterBackend):
 
         username = params.get("user")
         if not username:
-            raise ValidationError("User parameter is required")
+            raise ValidationError("User query parameter is required")
         queryset = queryset.filter(user__username=username).order_by("-added_at")
 
         status = params.get('status')

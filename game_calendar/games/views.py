@@ -1,15 +1,16 @@
-from datetime import datetime
 import json
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
+from datetime import datetime
+from django.conf import settings
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.auth import get_user_model
 from django.db.models import OuterRef, Subquery
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
+from rest_framework import status
 
 from .models import Game, GamePlatformRelease, UserGame, WebhookEvent
 from .serializers import GameDetailSerializer, CalendarEntrySerializer, GameListSerializer, UserGameSerializer
@@ -31,7 +32,6 @@ class GameViewset(mixins.RetrieveModelMixin,
 
         if self.action == "retrieve":
             queryset = queryset.prefetch_related("releases__platform")
-            return queryset
 
         return queryset
 
@@ -44,13 +44,14 @@ class GameViewset(mixins.RetrieveModelMixin,
     def get_serializer_class(self):
         if self.action == "list":
             return GameListSerializer
-        return GameDetailSerializer
+        elif self.action == "retrieve":
+            return GameDetailSerializer
 
     @action(detail=True,
             methods=["post"],
             url_path="toggle-my-game",
             permission_classes=[IsAuthenticated])
-    def toggle_my_game(self, request, slug=None):
+    def toggle_my_game(self, request: Request, slug=None):
         user = request.user
         new_status = request.data.get("status", UserGame.Status.WISHLIST)
         old_status = None
@@ -89,7 +90,7 @@ class CalendarViewset(viewsets.GenericViewSet):
             "exact_date": [],
             "this_month": []
         }
-        
+
         for release in all_releases:
             key = "exact_date" if release["date_format__title"] == "YYYYMMDD" else "this_month"
             releases[key].append({
@@ -103,7 +104,7 @@ class CalendarViewset(viewsets.GenericViewSet):
         releases["this_month"] = CalendarEntrySerializer(releases["this_month"], many=True).data
 
         return Response(releases)
-    
+
     @action(methods=["get"], detail=False, url_path="releasing-this-year")
     def releasing_this_year(self, request):
         year = datetime.now().year
@@ -158,5 +159,13 @@ class UserGameViewset(mixins.ListModelMixin,
 
 @csrf_exempt
 def igdb_webhook(request):
-    WebhookEvent.objects.create(payload=json.loads(request.body))
-    return HttpResponse(status=200)
+    if request.method != "POST":
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    if request.headers.get("X-Secret") != settings.IGDB_WEBHOOK_SECRET:
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    WebhookEvent.objects.create(
+        headers={k: v for k, v in request.headers.items()},
+        payload=json.loads(request.body)
+    )
+    return Response(status=status.HTTP_200_OK)
