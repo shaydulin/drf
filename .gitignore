@@ -211,3 +211,4 @@ helpers/
 django_cache/
 .vscode/
 staticfiles/
+data.json

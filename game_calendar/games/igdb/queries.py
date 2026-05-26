@@ -54,6 +54,7 @@ def fetch_games(platform_ids: list, offset: int = 0, cnt: bool = False):
             & (release_dates.date != null | release_dates.date_format.format != null)
             & (release_dates.status = 6 | release_dates.status = null)
             & release_dates.platform = ({",".join(map(str, platform_ids))});
+        sort id asc;
         offset {offset};
         limit 500;
     """

@@ -21,6 +21,11 @@ class Command(BaseCommand):
         total_games = fetch_games(list(platform_mapping), cnt=True).get("count", 0)
         self.stdout.write(self.style.NOTICE(f"Total games to parse: {total_games}"))
 
+        # =======================
+        cnt = 1
+        written_game_ids = {}
+        # =======================
+
         games_parsed = 0
         games_skipped = 0
         games_written = 0
@@ -35,11 +40,14 @@ class Command(BaseCommand):
             for game_data in data:
                 if Game.objects.filter(igdb_id=game_data["id"]).exists():
                     self.stdout.write(self.style.WARNING(
-                        f"Game with IGDB ID {game_data['id']} already exists."
-                        f"Total games written so far: {games_written}."
+                        f"Game with IGDB ID {game_data['id']} already exists. "
+                        f"Total games written so far: {games_written}. "
                         "Stopping parsing to avoid duplicates."
                     ))
                     interrupt = True
+                    # =======================
+                    print(written_game_ids[game_data["id"]], cnt, offset)
+                    # =======================
                     break
 
                 game = save_game_and_releases(game_data, platform_mapping, date_format_mapping)
@@ -49,6 +57,11 @@ class Command(BaseCommand):
                     continue
 
                 games_written += 1
+
+                # =======================
+                written_game_ids[game.igdb_id] = cnt
+                cnt += 1
+                # =======================
 
             if interrupt:
                 break
