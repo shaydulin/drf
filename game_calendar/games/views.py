@@ -158,14 +158,36 @@ class UserGameViewset(mixins.ListModelMixin,
         return queryset
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 @api_view(["POST"])
 @csrf_exempt
 def igdb_webhook(request):
+    logger.info("IGDB webhook hit")
+    logger.info("headers: %s", dict(request.headers))
+    logger.info("body: %s", request.body)
+
     if request.headers.get("X-Secret") != settings.IGDB_WEBHOOK_SECRET:
+        logger.warning("Invalid secret")
         return Response(status=status.HTTP_403_FORBIDDEN)
 
-    WebhookEvent.objects.create(
-        headers={k: v for k, v in request.headers.items()},
-        payload=json.loads(request.body) if request.body else None
-    )
+    try:
+        payload = request.data
+    except Exception:
+        logger.exception("Failed to parse request.data")
+        payload = {}
+
+    try:
+        WebhookEvent.objects.create(
+            headers=dict(request.headers),
+            payload=payload
+        )
+    except Exception:
+        logger.exception("Failed to save webhook event")
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    logger.info("Webhook saved successfully")
+
     return Response(status=status.HTTP_200_OK)
