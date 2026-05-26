@@ -153,6 +153,6 @@ class UserGame(models.Model):
 
 
 class WebhookEvent(models.Model):
-    headers = models.JSONField()
-    payload = models.JSONField()
+    headers = models.JSONField(null=True, blank=True)
+    payload = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

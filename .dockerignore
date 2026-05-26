@@ -207,7 +207,14 @@ marimo/_lsp/
 __marimo__/
 
 
-helpers/
-django_cache/
-.vscode/
-staticfiles/
+game_calendar/.env
+game_calendar/django_cache/
+game_calendar/helpers/
+game_calendar/db.sqlite3
+game_calendar/staticfiles/
+
+# Docker
+.git
+.dockerignore
+Dockerfile
+docker-compose.yml

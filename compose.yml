@@ -1,0 +1,64 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: game_calendar_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/logs:/var/log/nginx
+      - ./game_calendar/staticfiles:/app/staticfiles
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - game_calendar_network
+
+  backend:
+    build: .
+    image: game_calendar:0.1
+    container_name: game_calendar_backend
+    env_file:
+      - ./game_calendar/.env
+    expose:
+      - "8000"
+    volumes:
+      - ./game_calendar/staticfiles:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - game_calendar_network
+    command: >
+      sh -c "
+      python manage.py migrate &&
+      python manage.py collectstatic --noinput &&
+      gunicorn game_calendar.wsgi:application --bind 0.0.0.0:8000
+      "
+
+  db:
+    image: postgres:18
+    container_name: game_calendar_db
+    env_file:
+      - ./game_calendar/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - game_calendar_network
+
+volumes:
+  postgres_data:
+
+networks:
+  game_calendar_network:

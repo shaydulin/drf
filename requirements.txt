@@ -1,0 +1,11 @@
+gunicorn==26.0
+Django==6.0.3
+django-filter==25.2
+djangorestframework==3.17.0
+django-extensions==4.1
+djoser==2.3.3
+igdb-api-v4==0.3.3
+psycopg==3.3.3
+psycopg-binary==3.3.3
+python-dotenv==1.2.2
+requests==2.32.5
