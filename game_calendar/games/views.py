@@ -161,13 +161,11 @@ class UserGameViewset(mixins.ListModelMixin,
 @api_view(["POST"])
 @csrf_exempt
 def igdb_webhook(request):
-    if request.method != "POST":
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
     if request.headers.get("X-Secret") != settings.IGDB_WEBHOOK_SECRET:
         return Response(status=status.HTTP_403_FORBIDDEN)
 
     WebhookEvent.objects.create(
         headers={k: v for k, v in request.headers.items()},
-        payload=json.loads(request.body)
+        payload=json.loads(request.body) if request.body else None
     )
     return Response(status=status.HTTP_200_OK)

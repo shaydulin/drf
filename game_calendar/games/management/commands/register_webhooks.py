@@ -18,7 +18,7 @@ class Command(BaseCommand):
             "Content-Type": "application/x-www-form-urlencoded"
         }
 
-        webhook_url = f"{settings.SITE_URL}/webhooks/igdb/"
+        webhook_url = f"{settings.SITE_URL}/api/v1/webhooks/igdb/"
 
         for endpoint in endpoints:
             url = f"https://api.igdb.com/v4/{endpoint}/webhooks/"
