@@ -159,12 +159,15 @@ class UserGameViewset(mixins.ListModelMixin,
 
 
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
 @api_view(["POST"])
 @csrf_exempt
 def igdb_webhook(request):
+    start = time.monotonic()
+
     logger.info("IGDB webhook hit")
     logger.info("headers: %s", dict(request.headers))
     logger.info("body: %s", request.body)
@@ -189,5 +192,6 @@ def igdb_webhook(request):
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     logger.info("Webhook saved successfully")
+    logger.info("WEBHOOK TIME %.3f", time.monotonic()-start)
 
     return Response(status=status.HTTP_200_OK)
