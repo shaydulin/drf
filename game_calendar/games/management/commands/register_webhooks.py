@@ -9,8 +9,10 @@ class Command(BaseCommand):
     help = "Register webhooks for IGDB updates."
 
     def handle(self, *args, **options):
-        endpoints = ["platforms", "games", "release_dates"]
-        methods = ["create", "update", "delete"]
+        # endpoints = ["platforms", "games", "release_dates"]
+        endpoints = ["games"]
+        # methods = ["create", "update", "delete"]
+        methods = ["update"]
 
         headers = {
             "Client-ID": settings.IGDB_CLIENT_ID,
