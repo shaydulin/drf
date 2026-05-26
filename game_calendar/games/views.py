@@ -165,19 +165,18 @@ logger = logging.getLogger(__name__)
 @api_view(["POST"])
 @csrf_exempt
 def igdb_webhook(request):
-    logger.info("IGDB webhook hit")
-    logger.info("headers: %s", dict(request.headers))
-    logger.info("body: %s", request.body)
-
     if request.headers.get("X-Secret") != settings.IGDB_WEBHOOK_SECRET:
         logger.warning("Invalid secret")
+        logger.warning("headers: %s", dict(request.headers))
         return Response(status=status.HTTP_403_FORBIDDEN)
 
     try:
         payload = request.data
     except Exception:
         logger.exception("Failed to parse request.data")
-        payload = {}
+        logger.warning("body: %s", request.body)
+        logger.warning("headers: %s", dict(request.headers))
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     try:
         WebhookEvent.objects.create(
@@ -186,8 +185,8 @@ def igdb_webhook(request):
         )
     except Exception:
         logger.exception("Failed to save webhook event")
+        logger.warning("payload: %s", payload)
+        logger.warning("headers: %s", dict(request.headers))
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    logger.info("Webhook saved successfully")
 
     return Response(status=status.HTTP_200_OK)
