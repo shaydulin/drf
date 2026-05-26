@@ -5,6 +5,7 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.auth import get_user_model
 from django.db.models import OuterRef, Subquery
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -157,6 +158,7 @@ class UserGameViewset(mixins.ListModelMixin,
         return queryset
 
 
+@api_view(["POST"])
 @csrf_exempt
 def igdb_webhook(request):
     if request.method != "POST":
